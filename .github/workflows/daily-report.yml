@@ -2,11 +2,7 @@ name: Daily Parliamentary Questions Report
 
 on:
   schedule:
-    # Run every weekday at 8:00 AM UTC (adjust timezone as needed)
-    # Format: minute hour day month weekday
-    - cron: '0 7 * * 0-6'
-  
-  # Allow manual triggering from GitHub UI
+    - cron: '0 8 * * 1-5'
   workflow_dispatch:
 
 jobs:
@@ -36,11 +32,10 @@ jobs:
       run: |
         python parliament_questions.py
     
-    - name: Upload CSV artifacts (optional - for debugging)
+    - name: Upload CSV artifacts
       uses: actions/upload-artifact@v4
       if: always()
       with:
         name: reports
-        path: |
-          *.csv
+        path: '*.csv'
         retention-days: 7
