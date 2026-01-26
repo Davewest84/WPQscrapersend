@@ -1,10 +1,9 @@
 name: Daily Parliamentary Questions Report
-
 on:
   schedule:
-    - cron: '0 8 * * 1-5'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
-
+  
 jobs:
   run-report:
     runs-on: ubuntu-latest
