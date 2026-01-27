@@ -3,7 +3,7 @@ name: Daily Parliamentary Questions Report
 on:
   schedule:
     # Runs every 20 minutes
-    - cron: '*/20 * * * *'
+    - cron: '*/59 * * * *'
 
 jobs:
   run-report:
