@@ -513,7 +513,7 @@ We prioritize exclusive revelations, senior appointments/departures, and stories
     
     # Get questions from last 7 days
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=7)
+    start_date = end_date - timedelta(days=3)
     
     print("Retrieving questions answered in the last 7 days by Answering Body ID 17")
     print("=" * 60)
