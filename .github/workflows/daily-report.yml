@@ -1,6 +1,7 @@
 name: Daily Parliamentary Questions Report
 
 on:
+  workflow_dispatch:
   schedule:
     # Runs every day at 13:30 UTC
     - cron: '30 15 * * 1-6'
