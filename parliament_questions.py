@@ -511,11 +511,11 @@ We prioritize exclusive revelations, senior appointments/departures, and stories
     # Initialize API
     api = ParliamentQuestionsAPI()
     
-    # Get questions from last 7 days
+    # Get questions from last 3 days
     end_date = datetime.now()
     start_date = end_date - timedelta(days=3)
     
-    print("Retrieving questions answered in the last 7 days by Answering Body ID 17")
+    print("Retrieving questions answered in the last 3 days by Answering Body ID 17")
     print("=" * 60)
     
     questions = api.get_all_questions(
