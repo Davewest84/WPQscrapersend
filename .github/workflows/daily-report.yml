@@ -3,8 +3,8 @@ name: Daily Parliamentary Questions Report
 on:
   schedule:
     # Runs every day at 13:30 UTC
-    - cron: '30 16 * * 1-6'
-    - cron: '30 6 * * 1-6'
+    - cron: '30 15 * * 1-6'
+    - cron: '30 5 * * 1-6'
 
 jobs:
   run-report:
@@ -39,4 +39,4 @@ jobs:
       with:
         name: reports
         path: '*.csv'
-        retention-days: 7
+        retention-days: 3
