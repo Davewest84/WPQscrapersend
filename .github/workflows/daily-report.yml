@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   schedule:
     # Runs every day at 13:30 UTC
-    - cron: '30 15 * * 1-6'
-    - cron: '30 5 * * 1-6'
+    - cron: '30 14 * * 1-6'
+    - cron: '30 4 * * 1-6'
 
 jobs:
   run-report:
