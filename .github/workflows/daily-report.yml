@@ -3,9 +3,8 @@ name: Daily Parliamentary Questions Report
 on:
   workflow_dispatch:
   schedule:
-    # Runs every day at 13:30 UTC
-    - cron: '30 14 * * 1-6'
-    - cron: '30 4 * * 1-6'
+    # Runs at 04:30 UTC on Tuesdays, Thursdays, and Saturdays
+    - cron: '30 4 * * 2,4,6'
 
 jobs:
   run-report:

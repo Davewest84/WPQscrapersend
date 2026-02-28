@@ -132,7 +132,7 @@ class NewsStoryAnalyzer:
         if model:
             self.model = model
         else:
-            self.model = 'claude-3-sonnet-20240229' if self.provider == 'anthropic' else 'gpt-4-turbo'
+            self.model = 'claude-haiku-4-5-20251001' if self.provider == 'anthropic' else 'gpt-4-turbo'
     
     def analyze_questions_for_newsworthiness(self, df, publication_examples, max_questions=None):
         """
@@ -185,44 +185,54 @@ Attachments: {row['attachment_count']}
     
     def _create_analysis_prompt(self, questions_summary, publication_examples):
         """Create the prompt for the LLM"""
-        
-        prompt = f"""You are a news editor analyzing parliamentary written questions to identify stories that would interest readers of a specific publication.
 
-PUBLICATION CONTEXT:
-Here are example headlines and subject lines from this publication that show their editorial style and interests:
+        prompt = f"""You are an experienced HSJ journalist and news editor. Your task is to analyse UK parliamentary written questions (answered by the Department of Health and Social Care) and identify which ones could form the basis of an HSJ news story.
 
 {publication_examples}
 
-TASK:
-Analyze the following parliamentary questions and answers. Identify which ones would make newsworthy stories for this publication.
+---
 
-For each newsworthy question, provide:
-1. Question ID
-2. News headline (in the style of the publication)
-3. News angle (why this matters to the publication's readers)
-4. Story priority (High/Medium/Low)
-5. Brief explanation (2-3 sentences)
+## Your Task
 
-PARLIAMENTARY QUESTIONS TO ANALYZE:
+For each parliamentary question below, assess whether the question or — more importantly — the **ministerial answer** reveals information that meets the HSJ news test. Focus especially on:
+- Specific figures, data, or statistics revealed for the first time
+- Named organisations (trusts, ICBs, NHSE, CQC, etc.) and their performance or status
+- Policy changes, new guidance, or implementation updates with real implications for NHS leaders
+- Workforce or pay information (staffing figures, vacancy rates, pay decisions, VSM pay)
+- Regulatory action, enforcement, or oversight status changes (CQC ratings, NHSE oversight segments)
+- Leadership changes, appointments, or departures — especially under pressure or linked to governance problems
+- Admissions of delay, failure, or underfunding in national programmes (New Hospital Programme, EPRs, waiting list recovery)
+- Procurement decisions, legal proceedings, or tribunal outcomes
+- Any figure or data point that names a specific trust, ICB, or system rather than giving a national aggregate
+
+Be selective — most PQ answers are routine, evasive, or too vague to be HSJ stories. Only flag questions where the answer contains genuinely new, specific, and significant information.
+
+## Parliamentary Questions to Analyse
 
 {questions_summary}
 
-Please respond in the following JSON format:
+---
+
+## Response Format
+
+Respond in the following JSON format only — no other text:
+
 {{
   "newsworthy_stories": [
     {{
       "question_id": 12345,
       "uin": "123456",
-      "headline": "Proposed headline here",
-      "news_angle": "Why this matters",
+      "headline": "HSJ-style headline — specific, direct, uses names and figures where available. Should read like a real HSJ headline.",
+      "news_angle": "One sentence: what is the specific new information and why does it matter to NHS leaders",
       "priority": "High|Medium|Low",
-      "explanation": "Brief explanation of newsworthiness"
+      "story_trigger": "Which HSJ story trigger applies (e.g. 'New data', 'Leadership departure', 'Regulatory action', 'Policy implication', 'Workforce/pay', 'Financial', 'Patient safety')",
+      "explanation": "2-3 sentences explaining newsworthiness. Include specific figures or named organisations from the answer. Explain why an NHS leader reading HSJ would care."
     }}
   ],
-  "summary": "Overall summary of findings"
+  "summary": "One paragraph overall summary of this batch of questions — what themes dominate the answers, any significant patterns, and whether the overall batch is newsworthy or thin."
 }}
 
-Only include questions that would genuinely interest this publication's readers. Be selective and focus on real news value."""
+Priority guide: High = specific new data or a significant named development that warrants a standalone story. Medium = a clear angle but lacks full specificity — could support a story with further reporting. Low = borderline, possibly interesting as context but thin on its own. Exclude anything that is genuinely routine, a holding answer, or lacks specific new information."""
 
         return prompt
     
@@ -475,7 +485,75 @@ def main():
     
     # Publication examples
     PUBLICATION_EXAMPLES = """
-Example headlines from our publication:
+## About HSJ
+
+Health Service Journal (HSJ) is the UK's leading specialist news publication for NHS managers, executives, clinicians in leadership roles, and health policy professionals. It is a subscription (paywalled) publication covering England's NHS almost exclusively. Its readership is the NHS leadership class: trust chief executives, board members, directors of finance and operations, integrated care board (ICB) executives, senior civil servants in DHSC and NHSE, health ministers, regulators, think-tankers, and senior clinicians with management responsibilities.
+
+HSJ exists to hold the NHS to account, to inform its senior leaders about what is happening across the system, and to equip them to do their jobs better. It does not write for patients or the general public, nor for junior clinical staff. It writes for the people who run the NHS and those who scrutinise it.
+
+---
+
+## Core Subject Areas
+
+HSJ covers these areas, and stories usually span multiple categories:
+
+- **Finance and Efficiency**: Trust and ICS deficits, cost improvement programmes (CIPs), savings targets, in-year budget overspends, funding allocations, pay awards, the gap between NHSE/DHSC requirements and what is achievable
+- **Workforce and Pay**: Staffing levels, vacancy rates, sickness absence, agency spend, Agenda for Change (AfC) pay rounds, NHS Pay Review Body (NHSPRB) reports, VSM (Very Senior Manager) pay, affordability of pay awards, employment tribunal outcomes, whistleblowing, freedom to speak up (FTSU), people moves (appointments and departures at executive level)
+- **Policy and Regulation**: NHSE/DHSC policy direction, ICB reform (50% running cost reduction), the NHSE-DHSC merger, 10-Year Health Plan implementation, CQC inspection outcomes, provider oversight/failure regime (segment 4 / Provider Improvement Programme), commissioning landscape, Provider Selection Regime
+- **Quality, Performance and Patient Safety**: Waiting lists (RTT — referral to treatment, 18-week target), A&E four-hour and 12-hour waits, ambulance response times (categories 1–3), cancer waiting times, diagnostic waits, never events, HSSIB investigations, serious incident reports, CQC inspection findings
+- **Service Redesign and Commissioning**: Service reconfiguration, hospital-to-community shift, primary care network development, integrated neighbourhood teams, procurement decisions and contract awards, IPCPP (Independent Patient Choice and Procurement Panel) rulings
+- **Technology and Innovation**: EPR (electronic patient record) systems and named suppliers (Oracle Cerner, Epic, System C, MEDITECH), AI in diagnostics, digital transformation, NHS App, virtual wards
+- **Leadership and Governance**: Executive appointments and departures (CEO, chair, medical director, finance director at trusts, ICBs, NHSE, DHSC), board effectiveness, governance failures, CQC well-led domain findings, external governance reviews
+- **Integrated Care**: ICS/ICB structure and reform, NHSE-DHSC merger implications, sub-ICB structures, neighbourhood health and place-based partnerships
+- **Mental Health**: Access standards and waiting times, community mental health transformation, inpatient safety, workforce shortages
+- **Maternity**: Safety (post-Ockenden and Kirkup inquiries), CQC ratings, NHSE enforcement, inequalities for Black and ethnic minority women and those from deprived communities, the Amos review
+- **Emergency and Urgent Care**: A&E performance, ambulance handover delays, corridor care, winter pressures, urgent treatment centres
+- **Primary Care**: GP contract negotiations, access, primary care network development, community services shift-left agenda
+- **Cancer**: Waiting times, 62-day target, trust and system outliers, cancer plan implementation
+- **Estates and Capital**: New Hospital Programme (NHP), capital backlog, estates maintenance
+
+---
+
+## What Triggers an HSJ Story
+
+The following reliably constitute HSJ news — look for these signals in the question and especially the ministerial answer:
+
+1. **New data or previously unpublicised information** — specific figures revealed for the first time, statistics not widely reported, references to internal documents, data by named trust or system
+2. **Named organisation performance changes** — any trust's or system's financial forecast, CQC rating, RTT position, A&E performance, or oversight segment status changing materially
+3. **Policy announcements with real implications — and sceptical analysis** — what a policy means in practice, what is missing (no delivery plan, no new funding), what NHS leaders will need to do
+4. **Employment tribunals and legal proceedings** — discrimination, unfair dismissal, whistleblowing, protected disclosures, judicial review, procurement disputes
+5. **Regulatory action and inspection findings** — CQC inspection outcomes naming trusts, NHSE oversight framework movements, IPCPP procurement rulings, HSSIB safety reports
+6. **Leadership appointments, departures, and instability** — CEO, chair, medical director, finance director moves, especially linked to organisational difficulties, departures under pressure, or unusual patterns (multiple interims, sudden departures)
+7. **Pay and workforce policy** — Pay Review Body reports, affordability gaps, union responses, VSM pay changes, recruitment and retention data
+8. **Procurement decisions and challenges** — contract awards, procurement challenges, irregularities, legal action
+9. **Whistleblowing and culture failures** — bullying, discrimination, sexual misconduct findings, FTSU failures — when documented in reports, tribunal judgements, or official reviews
+10. **National programme failures or delays** — New Hospital Programme, EPR rollouts, digital transformation, community mental health transformation significantly delayed or over budget
+11. **Parliamentary and political scrutiny** — select committee sessions (PAC, Health and Social Care Committee), Written Ministerial Statements, and minister responses that reveal new NHS information
+
+---
+
+## What Makes a Story Specifically HSJ (Not BBC or Guardian)
+
+1. **Named organisations throughout** — HSJ says "Northern Lincolnshire and Goole NHS Foundation Trust", not "an NHS trust in the north". It names the system, the chief executive, the regulator's finding, and the specific figures.
+2. **Written for insiders** — assumes knowledge of NHS structures and does not explain acronyms. The reader already knows what a segment 4 trust means, what AfC is, what an ICB does, what RTT stands for.
+3. **Data as evidence** — financial figures, performance percentages, trust-by-trust comparisons. "Seven ICBs forecasting a combined £400m overspend" is a typical HSJ lead. Precision matters.
+4. **Sceptical of official narratives** — HSJ consistently questions official claims about NHS performance, funding levels, and reform progress. It calls out "overclaiming", critiques strategies as "wish lists" without delivery plans.
+5. **Accountability with specificity** — holds organisations and individuals to account with precision, not populist language. Does not use patient suffering as a rhetorical device.
+6. **Covers what senior NHS leaders care about professionally** — their own pay and conditions, legal exposure (employment tribunals, regulatory action against individuals), career progression (people moves, leadership development), governance responsibilities.
+
+---
+
+## The Unifying Test
+
+A parliamentary question answer is potentially an HSJ story if: **the information is new, specific, significant to NHS leadership decision-making or accountability, and can be told with precision and scepticism.**
+
+A ministerial answer that names specific figures, reveals trust or system-level data, announces policy with real implications, signals a significant workforce/financial/regulatory development, or admits delay or failure in a national programme has HSJ story potential.
+
+A vague holding answer, a restatement of existing government policy, or a non-answer that reveals nothing specific does not.
+
+---
+
+## Example HSJ Headlines
 
 - CQC chief executive announces sudden departure
 - Two ICB chief executives to stand down
@@ -485,8 +563,6 @@ Example headlines from our publication:
 - 'No rush' to transfer NHSE staff as abolition faces delay
 - NHSE and DHSC to be cut by 50%
 - NHSE workforce bosses to leave
-- Chris Hopson to leave NHSE
-- NHS manager facing bribery charge found dead
 - Trusts' 'league table' rankings revealed
 - Revealed: The 10-Year Plan vision for FTs and ICBs
 - We have seen the government's 10-Year Health Plan: it is a mess
@@ -496,11 +572,11 @@ Example headlines from our publication:
 - Trust ordered to cut 600 posts
 - 'Big consolidation' of ICBs coming, says new NHSE chief exec
 - ICB chief suspended pending internal investigation
-
-Our publication focuses on: NHS leadership changes and appointments, organizational restructuring (ICBs, trusts, NHSE), 
-workforce and staffing issues, budget cuts and financial pressures, policy changes affecting NHS management, 
-internal investigations and governance issues, and the 10-Year Health Plan implementation.
-We prioritize exclusive revelations, senior appointments/departures, and stories that impact NHS organizational structure.
+- Seven ICBs forecasting combined £400m overspend
+- CQC rates trust inadequate after unannounced inspection
+- NHSPRB recommends 4.5% pay award — government signals it will not fund in full
+- Maternity unit rated inadequate over persistent safety failures
+- Revealed: NHS agency spend rises 12% as vacancy rate hits record high
 """
     
     print("=" * 60)
@@ -550,8 +626,8 @@ We prioritize exclusive revelations, senior appointments/departures, and stories
     print("=" * 60)
     column_order = ['id', 'url', 'has_attachments', 'has_table', 'date_answered', 'heading', 'answer_text', 'question_text', 'asking_member_name', 'attachments']
     df_export = df_recent[column_order]
-    df_export.to_csv('parliament_questions_body17_last7days.csv', index=False)
-    print("Data exported to 'parliament_questions_body17_last7days.csv'")
+    df_export.to_csv('parliament_questions_body17_last3days.csv', index=False)
+    print("Data exported to 'parliament_questions_body17_last3days.csv'")
     
     # LLM Analysis
     print("\n\n" + "=" * 60)
@@ -561,7 +637,7 @@ We prioritize exclusive revelations, senior appointments/departures, and stories
     analyzer = NewsStoryAnalyzer(
         api_key=ANTHROPIC_API_KEY,
         provider='anthropic',
-        model='claude-3-haiku-20240307'
+        model='claude-haiku-4-5-20251001'
     )
     
     newsworthy_df = analyzer.analyze_questions_for_newsworthiness(
@@ -601,7 +677,7 @@ tr:nth-child(even) {{ background-color: #f2f2f2; }}
 <h2>Parliamentary Questions Report</h2>
 <p><strong>Date:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
 <p><strong>Answering Body:</strong> Department of Health and Social Care (ID: 17)</p>
-<p><strong>Date Range:</strong> Last 7 days</p>
+<p><strong>Date Range:</strong> Last 3 days</p>
 
 <h3>Summary</h3>
 <ul>
@@ -674,7 +750,7 @@ tr:nth-child(even) {{ background-color: #f2f2f2; }}
     email_body += "</body></html>"
     
     # Send email
-    attachments_list = ['parliament_questions_body17_last7days.csv']
+    attachments_list = ['parliament_questions_body17_last3days.csv']
     if not newsworthy_df.empty:
         attachments_list.append('newsworthy_stories.csv')
     
