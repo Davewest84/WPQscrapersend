@@ -205,6 +205,15 @@ For each parliamentary question below, assess whether the question or — more i
 - Procurement decisions, legal proceedings, or tribunal outcomes
 - Any figure or data point that names a specific trust, ICB, or system rather than giving a national aggregate
 
+Give additional weight to questions whose **heading** explicitly refers to any of the following — these topics are of particular interest to HSJ readers and are more likely to yield newsworthy answers:
+- NHS funding, finance, budgets, or cost (e.g. headings containing "Finance", "Funding", "Cost", "Budget", "Expenditure", "Spending")
+- Accountability, oversight, or performance (e.g. "Accountability", "Performance", "Inspection", "Oversight")
+- NHS management or leadership (e.g. "Management", "Leadership", "Chief Executive", "Senior Staff")
+- Integrated care boards or integrated care systems (e.g. "Integrated Care Boards", "Integrated Care Systems", "ICB")
+- NHS foundation trusts or trusts (e.g. "Foundation Trusts", "NHS Trusts")
+
+If a question has one of these headings, lower your threshold for flagging it — even a moderately specific answer may be worth including.
+
 Be selective — most PQ answers are routine, evasive, or too vague to be HSJ stories. Only flag questions where the answer contains genuinely new, specific, and significant information.
 
 ## Parliamentary Questions to Analyse
