@@ -216,6 +216,8 @@ If a question has one of these headings, lower your threshold for flagging it �
 
 Be selective — most PQ answers are routine, evasive, or too vague to be HSJ stories. Only flag questions where the answer contains genuinely new, specific, and significant information.
 
+**Return no more than 5 stories.** Pick only the most newsworthy. If fewer than 5 meet the threshold, return fewer.
+
 ## Parliamentary Questions to Analyse
 
 {questions_summary}
@@ -231,17 +233,21 @@ Respond in the following JSON format only — no other text:
     {{
       "question_id": 12345,
       "uin": "123456",
-      "headline": "HSJ-style headline — specific, direct, uses names and figures where available. Should read like a real HSJ headline.",
-      "news_angle": "One sentence: what is the specific new information and why does it matter to NHS leaders",
+      "headline": "HSJ-style headline — specific, direct, uses names and figures where available. Should read like a real HSJ headline. (Max 150 words)",
+      "news_angle": "One sentence: what is the specific new information and why does it matter to NHS leaders. (Max 150 words)",
       "priority": "High|Medium|Low",
       "story_trigger": "Which HSJ story trigger applies (e.g. 'New data', 'Leadership departure', 'Regulatory action', 'Policy implication', 'Workforce/pay', 'Financial', 'Patient safety')",
-      "explanation": "2-3 sentences explaining newsworthiness. Include specific figures or named organisations from the answer. Explain why an NHS leader reading HSJ would care."
+      "explanation": "2-3 sentences explaining newsworthiness. Include specific figures or named organisations from the answer. Explain why an NHS leader reading HSJ would care. (Max 150 words)"
     }}
   ],
-  "summary": "One paragraph overall summary of this batch of questions — what themes dominate the answers, any significant patterns, and whether the overall batch is newsworthy or thin."
+  "summary": "One paragraph overall summary of this batch of questions — what themes dominate the answers, any significant patterns, and whether the overall batch is newsworthy or thin. (Max 150 words)"
 }}
 
-Priority guide: High = specific new data or a significant named development that warrants a standalone story. Medium = a clear angle but lacks full specificity — could support a story with further reporting. Low = borderline, possibly interesting as context but thin on its own. Exclude anything that is genuinely routine, a holding answer, or lacks specific new information."""
+Priority guide: High = specific new data or a significant named development that warrants a standalone story. Medium = a clear angle but lacks full specificity — could support a story with further reporting. Low = borderline, possibly interesting as context but thin on its own. Exclude anything that is genuinely routine, a holding answer, or lacks specific new information.
+
+IMPORTANT CONSTRAINTS:
+- Return a MAXIMUM of 5 newsworthy stories. Only the most important.
+- Keep every text field (headline, news_angle, explanation, summary) to 150 words maximum. Be concise."""
 
         return prompt
     
@@ -651,8 +657,7 @@ A vague holding answer, a restatement of existing government policy, or a non-an
     
     newsworthy_df = analyzer.analyze_questions_for_newsworthiness(
         df=df_recent,
-        publication_examples=PUBLICATION_EXAMPLES,
-        max_questions=20
+        publication_examples=PUBLICATION_EXAMPLES
     )
     
     if not newsworthy_df.empty:
