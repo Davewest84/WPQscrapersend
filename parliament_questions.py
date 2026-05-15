@@ -620,7 +620,26 @@ A vague holding answer, a restatement of existing government policy, or a non-an
     print("\n\nFetching full details for each question...")
     print("=" * 60)
     df_recent = questions_to_dataframe(questions, fetch_full_details=True, api_client=api)
-    
+
+    if df_recent.empty:
+        print("\nNo questions answered in this window — likely recess. Sending notification and exiting.")
+        send_email_with_attachments(
+            sender_email=SENDER_EMAIL,
+            sender_password=SENDER_PASSWORD,
+            recipient_email=RECIPIENT_EMAIL,
+            subject=f"Parliamentary Questions Report - {datetime.now().strftime('%Y-%m-%d')} (no questions)",
+            body=(
+                "<html><body>"
+                f"<h2>Parliamentary Questions Report</h2>"
+                f"<p><strong>Date:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>"
+                "<p>No DHSC written questions were answered in the last 3 days. "
+                "This is usually a recess / no-sitting period.</p>"
+                "</body></html>"
+            ),
+            attachments=[]
+        )
+        return
+
     # Check if answers contain HTML tables
     df_recent['has_table'] = df_recent['answer_text'].apply(
         lambda x: 'YES' if (pd.notna(x) and ('<table' in str(x).lower() or '<tbody' in str(x).lower())) else 'NO'
