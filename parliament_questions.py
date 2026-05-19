@@ -69,8 +69,8 @@ class ParliamentQuestionsAPI:
             params['answeringBodies'] = answering_bodies
         if house:
             params['house'] = house
-            
-        response = self.session.get(endpoint, params=params)
+
+        response = self.session.get(endpoint, params=params, timeout=60)
         response.raise_for_status()
         return response.json()
     
@@ -110,8 +110,8 @@ class ParliamentQuestionsAPI:
         params = {
             'expandMember': expand_member
         }
-        
-        response = self.session.get(endpoint, params=params)
+
+        response = self.session.get(endpoint, params=params, timeout=60)
         response.raise_for_status()
         return response.json()
 
@@ -132,37 +132,68 @@ class NewsStoryAnalyzer:
         if model:
             self.model = model
         else:
-            self.model = 'claude-haiku-4-5-20251001' if self.provider == 'anthropic' else 'gpt-4-turbo'
+            self.model = 'claude-opus-4-7' if self.provider == 'anthropic' else 'gpt-4-turbo'
     
-    def analyze_questions_for_newsworthiness(self, df, publication_examples, max_questions=None):
+    def analyze_questions_for_newsworthiness(self, df, publication_examples,
+                                              max_questions=None, chunk_size=50,
+                                              max_overall=5):
         """
-        Analyze questions and identify newsworthy stories for a specific publication
+        Analyse questions in chunks, then return the top overall stories by priority.
+
+        Chunking keeps each LLM call within a comfortable context window and makes
+        a single bad chunk recoverable. Per-chunk top-5 results are aggregated,
+        sorted by priority (High → Medium → Low), and the top ``max_overall``
+        are returned.
         """
-        
-        # Limit the number of questions if specified
+        # Optional cap on total questions analysed
         questions_to_analyze = df.head(max_questions) if max_questions else df
-        
-        # Prepare the questions summary for the LLM
-        questions_summary = self._prepare_questions_summary(questions_to_analyze)
-        
-        # Create the prompt
-        prompt = self._create_analysis_prompt(questions_summary, publication_examples)
-        
-        print("Analyzing questions with LLM...")
+
+        if questions_to_analyze.empty:
+            return pd.DataFrame()
+
+        # Split into chunks
+        n = len(questions_to_analyze)
+        chunks = [questions_to_analyze.iloc[i:i + chunk_size]
+                  for i in range(0, n, chunk_size)]
+
+        print(f"Analyzing {n} questions in {len(chunks)} chunk(s) of up to {chunk_size}...")
         print("=" * 60)
-        
-        # Call the appropriate LLM API
-        if self.provider == 'anthropic':
-            response = self._call_anthropic_api(prompt)
-        elif self.provider == 'openai':
-            response = self._call_openai_api(prompt)
-        else:
-            raise ValueError(f"Unsupported provider: {self.provider}")
-        
-        # Parse the LLM response
-        newsworthy_stories = self._parse_llm_response(response, df)
-        
-        return newsworthy_stories
+
+        all_stories = []
+        for chunk_idx, chunk in enumerate(chunks):
+            print(f"\n--- Chunk {chunk_idx + 1}/{len(chunks)} ({len(chunk)} questions) ---")
+
+            try:
+                questions_summary = self._prepare_questions_summary(chunk)
+                prompt = self._create_analysis_prompt(questions_summary, publication_examples)
+
+                if self.provider == 'anthropic':
+                    response = self._call_anthropic_api(prompt)
+                elif self.provider == 'openai':
+                    response = self._call_openai_api(prompt)
+                else:
+                    raise ValueError(f"Unsupported provider: {self.provider}")
+
+                chunk_stories_df = self._parse_llm_response(response, df)
+                if not chunk_stories_df.empty:
+                    all_stories.append(chunk_stories_df)
+            except Exception as e:
+                print(f"Chunk {chunk_idx + 1} failed: {e} — skipping")
+                continue
+
+        if not all_stories:
+            print("\nNo newsworthy stories across any chunk.")
+            return pd.DataFrame()
+
+        # Combine and pick top overall by priority
+        combined = pd.concat(all_stories, ignore_index=True)
+        priority_rank = {'High': 0, 'Medium': 1, 'Low': 2}
+        combined['_priority_rank'] = combined['priority'].map(priority_rank).fillna(99)
+        combined = combined.sort_values('_priority_rank').drop('_priority_rank', axis=1)
+
+        print(f"\nAggregated {len(combined)} stories across chunks; "
+              f"returning top {min(max_overall, len(combined))}.")
+        return combined.head(max_overall).reset_index(drop=True)
     
     def _prepare_questions_summary(self, df):
         """Prepare a concise summary of questions for the LLM"""
@@ -270,9 +301,9 @@ IMPORTANT CONSTRAINTS:
         }
         
         try:
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(url, headers=headers, json=data, timeout=180)
             response.raise_for_status()
-            
+
             result = response.json()
             return result['content'][0]['text']
         except requests.exceptions.HTTPError as e:
@@ -671,7 +702,7 @@ A vague holding answer, a restatement of existing government policy, or a non-an
     analyzer = NewsStoryAnalyzer(
         api_key=ANTHROPIC_API_KEY,
         provider='anthropic',
-        model='claude-haiku-4-5-20251001'
+        model='claude-opus-4-7'
     )
     
     newsworthy_df = analyzer.analyze_questions_for_newsworthiness(
