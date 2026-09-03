@@ -3,8 +3,10 @@ name: Daily Parliamentary Questions Report
 on:
   workflow_dispatch:
   schedule:
-    # Runs at 04:30 UTC on Tuesdays, Thursdays, and Saturdays
-    - cron: '30 4 * * 2,4,6'
+    # Runs at 03:00 UTC on Tuesdays, Thursdays, and Saturdays.
+    # Earlier than needed on purpose: GitHub queues free-tier cron on shared
+    # runners, and 04:30 was starting anywhere from 05:00 to 15:22 UTC.
+    - cron: '0 3 * * 2,4,6'
 
 jobs:
   run-report:
