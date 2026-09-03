@@ -654,7 +654,7 @@ A vague holding answer, a restatement of existing government policy, or a non-an
 
     if df_recent.empty:
         print("\nNo questions answered in this window — likely recess. Sending notification and exiting.")
-        send_email_with_attachments(
+        sent = send_email_with_attachments(
             sender_email=SENDER_EMAIL,
             sender_password=SENDER_PASSWORD,
             recipient_email=RECIPIENT_EMAIL,
@@ -669,6 +669,9 @@ A vague holding answer, a restatement of existing government policy, or a non-an
             ),
             attachments=[]
         )
+        if not sent:
+            print("\nFailing the run: the report was generated but could not be delivered.")
+            sys.exit(1)
         return
 
     # Check if answers contain HTML tables
@@ -818,7 +821,7 @@ tr:nth-child(even) {{ background-color: #f2f2f2; }}
     if not newsworthy_df.empty:
         attachments_list.append('newsworthy_stories.csv')
     
-    send_email_with_attachments(
+    sent = send_email_with_attachments(
         sender_email=SENDER_EMAIL,
         sender_password=SENDER_PASSWORD,
         recipient_email=RECIPIENT_EMAIL,
@@ -826,10 +829,16 @@ tr:nth-child(even) {{ background-color: #f2f2f2; }}
         body=email_body,
         attachments=attachments_list
     )
-    
+
     print("\n" + "=" * 60)
     print(f"Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
+
+    # A run that analysed the questions but could not deliver them is a failed run.
+    # Exiting 0 here is what hid five weeks of dead SMTP credentials behind green ticks.
+    if not sent:
+        print("\nFailing the run: the report was generated but could not be delivered.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
