@@ -454,16 +454,45 @@ def questions_to_dataframe(questions_data, fetch_full_details=False, api_client=
     return df
 
 
-def send_email_with_attachments(sender_email, sender_password, recipient_email, subject, body, attachments=[]):
+def parse_recipients(*values):
     """
-    Send an email with attachments using Gmail SMTP
+    Build a de-duplicated, order-preserving list of recipients.
+
+    Each value may be a string holding one or more addresses separated by
+    commas or semicolons, a list/tuple of addresses, or None. The report goes
+    to more than one person, so a single-address string can no longer be
+    handed straight to smtplib.
     """
-    
+    recipients = []
+    for value in values:
+        if not value:
+            continue
+        candidates = value if isinstance(value, (list, tuple)) else str(value).replace(';', ',').split(',')
+        for address in candidates:
+            address = str(address).strip()
+            if address and address.lower() not in [r.lower() for r in recipients]:
+                recipients.append(address)
+    return recipients
+
+
+def send_email_with_attachments(sender_email, sender_password, recipients, subject, body, attachments=[]):
+    """
+    Send an email with attachments using Gmail SMTP.
+
+    `recipients` may be a list or a comma/semicolon-separated string; every
+    address goes on the visible To: line.
+    """
+
+    recipients = parse_recipients(recipients)
+    if not recipients:
+        print("@NL@❌ No recipients configured - nothing to send.")
+        return False
+
     try:
         # Create message
         msg = MIMEMultipart()
         msg['From'] = sender_email
-        msg['To'] = recipient_email
+        msg['To'] = ', '.join(recipients)
         msg['Subject'] = subject
         
         # Add body
@@ -498,10 +527,10 @@ def send_email_with_attachments(sender_email, sender_password, recipient_email, 
         # Send email
         print("Sending email...")
         text = msg.as_string()
-        server.sendmail(sender_email, recipient_email, text)
+        server.sendmail(sender_email, recipients, text)
         server.quit()
         
-        print(f"\n✅ Email sent successfully to {recipient_email}!")
+        print(f"\n✅ Email sent successfully to {', '.join(recipients)}!")
         return True
         
     except Exception as e:
@@ -516,7 +545,13 @@ def main():
     ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
     SENDER_EMAIL = os.environ.get('SENDER_EMAIL')
     SENDER_PASSWORD = os.environ.get('SENDER_PASSWORD')
-    RECIPIENT_EMAIL = os.environ.get('RECIPIENT_EMAIL', 'dave.west@hsj.co.uk')
+    # RECIPIENT_EMAIL may hold several addresses (comma or semicolon separated);
+    # EXTRA_RECIPIENTS is an optional second secret for adding colleagues without
+    # touching the main one. Addresses stay in the secrets, not in this public repo.
+    RECIPIENTS = parse_recipients(
+        os.environ.get('RECIPIENT_EMAIL', 'dave.west@hsj.co.uk'),
+        os.environ.get('EXTRA_RECIPIENTS'),
+    )
     
     # Check required environment variables
     if not all([ANTHROPIC_API_KEY, SENDER_EMAIL, SENDER_PASSWORD]):
@@ -657,7 +692,7 @@ A vague holding answer, a restatement of existing government policy, or a non-an
         sent = send_email_with_attachments(
             sender_email=SENDER_EMAIL,
             sender_password=SENDER_PASSWORD,
-            recipient_email=RECIPIENT_EMAIL,
+            recipients=RECIPIENTS,
             subject=f"Parliamentary Questions Report - {datetime.now().strftime('%Y-%m-%d')} (no questions)",
             body=(
                 "<html><body>"
@@ -824,7 +859,7 @@ tr:nth-child(even) {{ background-color: #f2f2f2; }}
     sent = send_email_with_attachments(
         sender_email=SENDER_EMAIL,
         sender_password=SENDER_PASSWORD,
-        recipient_email=RECIPIENT_EMAIL,
+        recipients=RECIPIENTS,
         subject=email_subject,
         body=email_body,
         attachments=attachments_list
