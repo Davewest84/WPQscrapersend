@@ -32,6 +32,8 @@ jobs:
         SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
         SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
         RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+        # Optional: extra addresses (comma separated) without touching RECIPIENT_EMAIL
+        EXTRA_RECIPIENTS: ${{ secrets.EXTRA_RECIPIENTS }}
       run: |
         python parliament_questions.py
     
